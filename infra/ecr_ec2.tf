@@ -1,6 +1,6 @@
 # ECR repo for Docker image
 resource "aws_ecr_repository" "fastapi_repo" {
-  name = "${var.project_name}-repo"
+  name = "${var.fast_api}-repo"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -13,7 +13,7 @@ resource "aws_ecr_repository" "fastapi_repo" {
 
 # Security group for EC2 – open port 80
 resource "aws_security_group" "fastapi_sg" {
-  name        = "${var.project_name}-sg"
+  name        = "${var.fast_api}-sg"
   description = "Allow HTTP for FastAPI"
   vpc_id      = data.aws_vpc.default.id
 
@@ -42,14 +42,14 @@ data "aws_subnet_ids" "default" {
 
 # IAM role for EC2 so it can pull from ECR
 resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-ec2-role"
+  name = "${var.fast_api}-ec2-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect    = "Allow",
       Principal = { Service = "ec2.amazonaws.com" },
-      Action   = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
@@ -60,7 +60,7 @@ resource "aws_iam_role_policy_attachment" "ec2_ecr_access" {
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "${var.project_name}-instance-profile"
+  name = "${var.fast_api}-instance-profile"
   role = aws_iam_role.ec2_role.name
 }
 
@@ -82,7 +82,7 @@ resource "aws_instance" "fastapi_ec2" {
               service docker start
               usermod -a -G docker ec2-user
 
-              REGION="${var.aws_region}"
+              REGION="${us-east-1}"
               REPOSITORY_URI="${aws_ecr_repository.fastapi_repo.repository_url}"
               IMAGE_TAG="latest"
 
@@ -93,6 +93,6 @@ resource "aws_instance" "fastapi_ec2" {
               EOF
 
   tags = {
-    Name = "${var.project_name}-ec2"
+    Name = "${var.fast_api}-ec2"
   }
 }
