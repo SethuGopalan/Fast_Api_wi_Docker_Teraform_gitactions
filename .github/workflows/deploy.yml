@@ -2,7 +2,7 @@ name: Build and Deploy FastAPI to EC2 via ECR + Terraform
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [master, main]
 
 jobs:
   build-and-deploy:
@@ -12,6 +12,8 @@ jobs:
       AWS_REGION: us-east-1
       ECR_REPO_NAME: fastapi-ec2-demo-repo
       PROJECT_NAME: fastapi-ec2-demo
+      DOCKERFILE_PATH: ./services/Data/Dockerfile # <-- CHANGE if needed
+      BUILD_CONTEXT: ./services/Data # <-- CHANGE if needed
 
     steps:
       - name: Checkout repo
@@ -24,6 +26,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Ensure ECR repository exists
+        run: |
+          aws ecr describe-repositories --repository-names "${{ env.ECR_REPO_NAME }}" >/dev/null 2>&1 || \
+          aws ecr create-repository --repository-name "${{ env.ECR_REPO_NAME }}" >/dev/null
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -33,7 +40,8 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           IMAGE_TAG=latest
-          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO_NAME }}:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/${{ env.ECR_REPO_NAME }}:$IMAGE_TAG \
+            -f "${{ env.DOCKERFILE_PATH }}" "${{ env.BUILD_CONTEXT }}"
           docker push $ECR_REGISTRY/${{ env.ECR_REPO_NAME }}:$IMAGE_TAG
 
       - name: Setup Terraform
